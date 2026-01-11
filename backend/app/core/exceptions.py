@@ -88,3 +88,36 @@ class RateLimitException(SmartAllocatorException):
             code="RATE_LIMIT_EXCEEDED",
             details={"retry_after": retry_after}
         )
+
+
+class OptimizationException(SmartAllocatorException):
+    """Error en optimización de portafolio."""
+    
+    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+        super().__init__(
+            message=message,
+            code="OPTIMIZATION_ERROR",
+            details=details or {}
+        )
+
+
+class InvalidViewException(SmartAllocatorException):
+    """View de Black-Litterman inválido."""
+    
+    def __init__(self, ticker: str, reason: str):
+        super().__init__(
+            message=f"View inválido para {ticker}:  {reason}",
+            code="INVALID_VIEW",
+            details={"ticker": ticker, "reason": reason}
+        )
+
+
+class RiskAnalysisException(SmartAllocatorException):
+    """Error en análisis de riesgo."""
+    
+    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+        super().__init__(
+            message=message,
+            code="RISK_ANALYSIS_ERROR",
+            details=details or {}
+        )

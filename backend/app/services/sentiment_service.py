@@ -1,9 +1,9 @@
 """
-Servicio de análisis de sentimiento con FinBERT.
+Servicio de análisis de sentimiento con FinBERT. 
 Procesa headlines y genera scores para Black-Litterman.
 """
 import logging
-from typing import Dict, List, Tuple
+from typing import Dict, List
 from datetime import datetime
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
@@ -28,8 +28,8 @@ settings = get_settings()
 
 class SentimentService:
     """
-    Servicio de análisis de sentimiento usando FinBERT.
-    Implementa lazy loading del modelo y procesamiento por lotes.
+    Servicio de análisis de sentimiento usando FinBERT. 
+    Implementa lazy loading del modelo y procesamiento por lotes. 
     """
     
     _instance = None
@@ -44,6 +44,10 @@ class SentimentService:
         2: SentimentLabel.NEUTRAL,
     }
     
+    # Umbrales para clasificación por score
+    BULLISH_THRESHOLD = 0.15       # > 15% score = Bullish
+    BEARISH_THRESHOLD = -0.15      # < -15% score = Bearish
+    
     def __new__(cls):
         """Singleton pattern para reutilizar modelo cargado."""
         if cls._instance is None:
@@ -53,7 +57,7 @@ class SentimentService:
     def __init__(self):
         self. model_name = settings.FINBERT_MODEL
         self.batch_size = settings.SENTIMENT_BATCH_SIZE
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self. device = "cuda" if torch. cuda.is_available() else "cpu"
     
     async def initialize_model(self) -> None:
         """Carga el modelo de forma asíncrona."""
@@ -62,15 +66,15 @@ class SentimentService:
         
         logger.info(f"Loading FinBERT model:  {self.model_name}")
         
-        loop = asyncio.get_event_loop()
+        loop = asyncio. get_event_loop()
         try:
             await loop.run_in_executor(
                 self._executor,
                 self._load_model_sync
             )
             logger.info(f"Model loaded successfully on {self.device}")
-        except Exception as e:
-            logger. exception(f"Failed to load model:  {e}")
+        except Exception as e: 
+            logger.exception(f"Failed to load model:  {e}")
             raise SentimentAnalysisException(
                 "Error cargando modelo de sentimiento",
                 model_error=str(e)
@@ -102,14 +106,13 @@ class SentimentService:
         """
         await self.initialize_model()
         
-        results:  Dict[str, TickerSentimentSummary] = {}
+        results: Dict[str, TickerSentimentSummary] = {}
         all_scores = []
         
         for ticker in tickers:
             articles = news_by_ticker.get(ticker, [])
             
             if not articles:
-                # Sin noticias = sentimiento neutral
                 results[ticker] = self._create_neutral_summary(ticker)
                 all_scores.append(0.0)
                 continue
@@ -117,7 +120,7 @@ class SentimentService:
             # Extraer headlines
             headlines = [article.title for article in articles if article.title]
             
-            if not headlines:
+            if not headlines: 
                 results[ticker] = self._create_neutral_summary(ticker)
                 all_scores.append(0.0)
                 continue
@@ -128,7 +131,7 @@ class SentimentService:
             # Agregar resultados
             summary = self._aggregate_sentiment(ticker, sentiment_results)
             results[ticker] = summary
-            all_scores.append(summary.sentiment_score)
+            all_scores. append(summary.sentiment_score)
         
         # Calcular índice agregado del mercado
         market_index = np.mean(all_scores) if all_scores else 0.0
@@ -143,12 +146,11 @@ class SentimentService:
     
     async def _analyze_headlines(
         self, 
-        headlines: List[str]
-    ) -> List[SentimentResult]:
+        headlines:  List[str]
+    ) -> List[SentimentResult]: 
         """Analiza una lista de headlines con FinBERT."""
         loop = asyncio.get_event_loop()
         
-        # Procesar en batches para eficiencia de memoria
         all_results = []
         
         for i in range(0, len(headlines), self.batch_size):
@@ -171,7 +173,6 @@ class SentimentService:
         results = []
         
         with torch.no_grad():
-            # Tokenizar
             inputs = self._tokenizer(
                 headlines,
                 padding=True,
@@ -180,11 +181,9 @@ class SentimentService:
                 return_tensors="pt"
             ).to(self.device)
             
-            # Inferencia
             outputs = self._model(**inputs)
             probabilities = torch.softmax(outputs.logits, dim=1)
             
-            # Procesar resultados
             for idx, headline in enumerate(headlines):
                 probs = probabilities[idx].cpu().numpy()
                 predicted_class = probs.argmax()
@@ -206,14 +205,14 @@ class SentimentService:
         self,
         ticker: str,
         results: List[SentimentResult]
-    ) -> TickerSentimentSummary:
+    ) -> TickerSentimentSummary: 
         """
         Agrega resultados de sentimiento en un score consolidado.
         
         El score final se calcula como: 
         score = (positive_weighted - negative_weighted) / total
         
-        Donde el peso es la confianza del modelo.
+        El sentimiento dominante se determina por el SCORE, no por conteo.
         """
         if not results:
             return self._create_neutral_summary(ticker)
@@ -230,7 +229,7 @@ class SentimentService:
             confidence = result.confidence
             total_confidence += confidence
             
-            if result.label == SentimentLabel.POSITIVE:
+            if result. label == SentimentLabel. POSITIVE:
                 positive_count += 1
                 weighted_positive += confidence
             elif result.label == SentimentLabel. NEGATIVE:
@@ -242,19 +241,15 @@ class SentimentService:
         total = len(results)
         
         # Score consolidado:  rango [-1, +1]
-        # Positivo menos negativo, ponderado por confianza
         if total_confidence > 0:
             sentiment_score = (weighted_positive - weighted_negative) / total_confidence
         else:
             sentiment_score = 0.0
         
-        # Determinar sentimiento dominante
-        counts = {
-            SentimentLabel.POSITIVE: positive_count,
-            SentimentLabel. NEGATIVE: negative_count,
-            SentimentLabel.NEUTRAL:  neutral_count
-        }
-        dominant = max(counts, key=counts. get)
+        # ============================================
+        # CAMBIO PRINCIPAL:  Clasificar por SCORE, no por conteo
+        # ============================================
+        dominant = self._classify_by_score(sentiment_score)
         
         return TickerSentimentSummary(
             ticker=ticker,
@@ -267,6 +262,22 @@ class SentimentService:
             neutral_ratio=round(neutral_count / total, 4),
             headlines=results
         )
+    
+    def _classify_by_score(self, score: float) -> SentimentLabel:
+        """
+        Clasifica el sentimiento basado en el score agregado.
+        
+        Umbrales: 
+        - Bullish:   score > 0.15 (15%)
+        - Bearish: score < -0.15 (-15%)
+        - Neutral: entre -0.15 y 0.15
+        """
+        if score >= self.BULLISH_THRESHOLD:
+            return SentimentLabel.POSITIVE
+        elif score <= self.BEARISH_THRESHOLD:
+            return SentimentLabel.NEGATIVE
+        else:
+            return SentimentLabel. NEUTRAL
     
     def _create_neutral_summary(self, ticker: str) -> TickerSentimentSummary:
         """Crea un resumen neutral cuando no hay datos."""
@@ -284,7 +295,7 @@ class SentimentService:
     
     def get_black_litterman_views(
         self,
-        sentiment_results: Dict[str, TickerSentimentSummary],
+        sentiment_results:  Dict[str, TickerSentimentSummary],
         base_view_magnitude: float = 0.05
     ) -> Dict[str, float]:
         """
@@ -292,7 +303,7 @@ class SentimentService:
         
         El score de sentimiento [-1, +1] se escala a un retorno esperado
         ajustado.  Por ejemplo, un score de +0.5 con magnitud base de 5%
-        resulta en una view de +2.5% de retorno esperado adicional.
+        resulta en una view de +2.5% de retorno esperado adicional. 
         
         Args:
             sentiment_results: Resultados del análisis de sentimiento
@@ -304,8 +315,6 @@ class SentimentService:
         views = {}
         
         for ticker, summary in sentiment_results.items():
-            # Score * magnitud = view
-            # Si sentiment_score = 0.6, view = 0.6 * 0.05 = 0.03 (3%)
             view = summary.sentiment_score * base_view_magnitude
             views[ticker] = round(view, 6)
         

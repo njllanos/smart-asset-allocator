@@ -146,7 +146,7 @@ class MarketDataService:
         self, 
         prices_df: pd.DataFrame, 
         tickers: List[str],
-        min_days:  int = 252
+        min_days:  int = 245
     ) -> None:
         """Valida que haya suficientes datos históricos."""
         invalid_tickers = []
