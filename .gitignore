@@ -1,0 +1,43 @@
+venv/
+. venv/
+env/
+
+# Variables de entorno (NUNCA subir)
+.env
+.env.local
+.env.*. local
+
+backend/venv/
+venv/
+*.pyc
+
+# Python
+__pycache__/
+*. py[cod]
+*. pyo
+. pytest_cache/
+*. egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Node (frontend)
+node_modules/
+.npm
+
+# Modelo descargado de Hugging Face (puede pesar varios GB)
+*.bin
+*.safetensorsbackend/venv/
