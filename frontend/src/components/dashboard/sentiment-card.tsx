@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { SentimentResult } from "@/lib/api";
+// Importamos el tooltip
+import { HelpTooltip } from "@/components/ui/help-tooltip";
 
 interface SentimentCardProps {
   results: Record<string, SentimentResult>;
@@ -36,7 +38,12 @@ export function SentimentCard({ results, marketIndex }: SentimentCardProps) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          Analisis de Sentimiento
+          <div className="flex items-center">
+            Análisis de Sentimiento
+            {/* TOOLTIP EXPLICATIVO SOBRE IA */}
+            <HelpTooltip content="Análisis de noticias financieras en tiempo real usando FinBERT (un modelo de IA especializado). Un puntaje positivo indica optimismo en el mercado, lo cual se usa como una 'View' (opinión) para ajustar las proyecciones matemáticas del modelo Black-Litterman." />
+          </div>
+          
           <div className={`flex items-center gap-2 ${getSentimentColor(marketIndex)}`}>
             {getSentimentIcon(marketIndex)}
             <span className="text-lg font-bold">{(marketIndex * 100).toFixed(1)}%</span>
@@ -56,7 +63,7 @@ export function SentimentCard({ results, marketIndex }: SentimentCardProps) {
                   <p className={`font-medium ${getSentimentColor(result.sentiment_score)}`}>
                     {(result.sentiment_score * 100).toFixed(1)}%
                   </p>
-                  <p className="text-xs text-muted-foreground">{result.articles_analyzed} articulos</p>
+                  <p className="text-xs text-muted-foreground">{result.articles_analyzed} artículos</p>
                 </div>
                 <div className="w-20 h-2 bg-gray-200 rounded-full overflow-hidden">
                   <div className="h-full bg-green-500" style={{ width: `${result.positive_ratio * 100}%` }} />

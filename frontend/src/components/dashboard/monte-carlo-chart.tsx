@@ -15,6 +15,8 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { MonteCarloPath } from "@/lib/api";
+// Importamos el tooltip
+import { HelpTooltip } from "@/components/ui/help-tooltip";
 
 const formatCurrencyCompact = (value: number) => {
   return new Intl.NumberFormat("en-US", {
@@ -84,7 +86,11 @@ export function MonteCarloChart({ samplePaths, portfolioValue }: MonteCarloChart
   return (
     <Card className="border-slate-200 shadow-sm col-span-1 lg:col-span-2">
       <CardHeader>
-        <CardTitle className="text-lg font-semibold text-slate-800">Proyección de Valor (Monte Carlo)</CardTitle>
+        {/* TITULO CON TOOLTIP */}
+        <CardTitle className="text-lg font-semibold text-slate-800 flex items-center">
+            Proyección de Valor (Monte Carlo)
+            <HelpTooltip content="Simulación de 5,000 futuros posibles usando Movimiento Browniano Geométrico. Genera caminos aleatorios basados en la media y volatilidad histórica para estimar rangos de probabilidad." />
+        </CardTitle>
         <CardDescription className="text-xs">
           Rango de probabilidad al 90% de confianza.
         </CardDescription>
@@ -135,8 +141,6 @@ export function MonteCarloChart({ samplePaths, portfolioValue }: MonteCarloChart
               />
 
               {/* 1. Área de Fondo (Rango de Confianza) */}
-              {/* Le ponemos legendType="none" para que no salga en la leyenda */}
-              {/* Le ponemos un nombre identificable para filtrarlo en el tooltip */}
               <Area
                 type="monotone"
                 dataKey="p95"
@@ -147,12 +151,12 @@ export function MonteCarloChart({ samplePaths, portfolioValue }: MonteCarloChart
                 legendType="none"
               />
 
-              {/* 2. Línea Superior (Optimista - Gris Oscuro/Azulado) */}
+              {/* 2. Línea Superior (Optimista - Verde) */}
               <Line
                 type="monotone"
                 dataKey="p95"
                 name="Optimista (95%)"
-                stroke="#10b981" // Slate 600
+                stroke="#10b981" 
                 strokeWidth={2}
                 dot={false}
                 strokeDasharray="4 4"
@@ -163,7 +167,7 @@ export function MonteCarloChart({ samplePaths, portfolioValue }: MonteCarloChart
                 type="monotone"
                 dataKey="median"
                 name="Esperado (Mediana)"
-                stroke="#3b82f6" // Blue 500
+                stroke="#3b82f6" 
                 strokeWidth={3}
                 dot={false}
                 activeDot={{ r: 6, strokeWidth: 0 }}
@@ -174,7 +178,7 @@ export function MonteCarloChart({ samplePaths, portfolioValue }: MonteCarloChart
                 type="monotone"
                 dataKey="p5"
                 name="Pesimista (5%)"
-                stroke="#ef4444" // Red 500
+                stroke="#ef4444" 
                 strokeWidth={2}
                 dot={false}
                 strokeDasharray="4 4"

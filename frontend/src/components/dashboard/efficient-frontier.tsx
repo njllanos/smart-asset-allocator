@@ -3,18 +3,17 @@
 import React from "react";
 import {
   ComposedChart,
-  Line,
   Area,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Scatter,
-  ReferenceDot,
-  Cell
+  Scatter
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+// Importamos el tooltip
+import { HelpTooltip } from "@/components/ui/help-tooltip";
 
 interface EfficientFrontierProps {
   frontierPoints: Array<{ return: number; volatility: number; sharpe: number }>;
@@ -22,7 +21,7 @@ interface EfficientFrontierProps {
 }
 
 // Tooltip Minimalista y Oscuro (Estilo Bloomberg)
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     // Detectar si el tooltip es sobre la curva o sobre el punto del usuario
     const data = payload[0].payload;
@@ -90,7 +89,11 @@ export function EfficientFrontier({ frontierPoints, currentPortfolio }: Efficien
       <CardHeader className="pb-2">
         <div className="flex justify-between items-center">
             <div>
-                <CardTitle className="text-lg font-semibold text-slate-800">Frontera Eficiente</CardTitle>
+                {/* AQUI AGREGAMOS EL TOOLTIP */}
+                <CardTitle className="text-lg font-semibold text-slate-800 flex items-center">
+                    Frontera Eficiente
+                    <HelpTooltip content="Representación gráfica de la Teoría Moderna de Portafolios (Markowitz). La línea azul indica el retorno máximo posible para cada nivel de riesgo. Cualquier punto debajo de la línea es subóptimo." />
+                </CardTitle>
                 <CardDescription className="text-xs">
                 Análisis Riesgo vs. Retorno
                 </CardDescription>
