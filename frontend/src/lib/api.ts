@@ -141,7 +141,7 @@ export interface RiskAnalysisResponse {
 
 // API Functions
 export const marketDataApi = {
-  getMarketData: async (tickers: string[], timeframe: string = "3y"): Promise<MarketDataResponse> => {
+  getMarketData: async (tickers: string[], timeframe: string = "5y"): Promise<MarketDataResponse> => {
     const response = await api.post("/market-data/", { tickers, timeframe });
     return response.data;
   },
@@ -162,7 +162,7 @@ export const optimizationApi = {
     tickers:  string[],
     objective: string = "max_sharpe",
     useSentiment: boolean = true,
-    timeframe: string = "3y",
+    timeframe: string = "5y",
     constraints?:  { min_weight?:  number; max_weight?: number }
   ): Promise<OptimizationResponse> => {
     const response = await api.post("/optimization/optimize", {
@@ -181,7 +181,8 @@ export const riskApi = {
     tickers: string[],
     weights: Record<string, number>,
     portfolioValue: number = 100000,
-    numSimulations: number = 5000
+    numSimulations: number = 5000,
+    timeframe: string = "5y"
   ): Promise<RiskAnalysisResponse> => {
     const response = await api.post("/risk/analyze", {
       tickers,

@@ -464,7 +464,7 @@ class RiskService:
         weights: Dict[str, float],
         portfolio_value: float,
         confidence_level: float = 0.95,
-        timeframe: TimeframePreset = TimeframePreset.THREE_YEARS
+        timeframe: TimeframePreset = TimeframePreset.FIVE_YEARS
     ) -> Dict: 
         """
         Cálculo rápido de VaR sin simulación Monte Carlo completa.

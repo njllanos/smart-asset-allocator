@@ -1,10 +1,9 @@
 "use client";
 
 import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { formatCurrency, formatPercent } from "@/lib/utils";
-import { TrendingUp, Shield, Target, Percent } from "lucide-react";
+import { TrendingUp, Activity, Crosshair, Wallet } from "lucide-react"; // Iconos más profesionales
 import { PortfolioMetrics } from "@/lib/api";
 
 interface MetricsSummaryProps {
@@ -12,59 +11,89 @@ interface MetricsSummaryProps {
   portfolioValue: number;
 }
 
-export function MetricsSummary({ metrics, portfolioValue }:  MetricsSummaryProps) {
-  const getSharpeRating = (sharpe: number) => {
-    if (sharpe >= 2) return { label: "Excelente", color: "success" as const };
-    if (sharpe >= 1) return { label: "Bueno", color: "default" as const };
-    if (sharpe >= 0.5) return { label: "Aceptable", color: "secondary" as const };
-    return { label: "Bajo", color: "destructive" as const };
-  };
-
-  const sharpeRating = getSharpeRating(metrics.sharpe_ratio);
+export function MetricsSummary({ metrics, portfolioValue }: MetricsSummaryProps) {
+  // Cálculo de ganancia estimada en dinero
+  const estimatedGain = portfolioValue * (metrics.expected_annual_return / 100);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <Card className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Retorno Esperado</CardTitle>
-          <TrendingUp className="h-4 w-4 text-green-600" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-green-700">{formatPercent(metrics.expected_annual_return)}</div>
-          <p className="text-xs text-green-600">Aprox {formatCurrency(portfolioValue * (metrics.expected_annual_return / 100))} anual</p>
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* 1. RETORNO (Verde) */}
+      <Card className="border-l-4 border-l-emerald-500 shadow-sm">
+        <CardContent className="p-6">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Retorno Esperado</p>
+              <h3 className="text-2xl font-bold text-gray-900 mt-2">
+                {formatPercent(metrics.expected_annual_return)}
+              </h3>
+              <p className="text-xs text-emerald-600 mt-1 font-medium">
+                +{formatCurrency(estimatedGain)} / año
+              </p>
+            </div>
+            <div className="p-2 bg-emerald-100 rounded-lg">
+              <TrendingUp className="h-5 w-5 text-emerald-600" />
+            </div>
+          </div>
         </CardContent>
       </Card>
 
-      <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Volatilidad</CardTitle>
-          <Shield className="h-4 w-4 text-blue-600" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-blue-700">{metrics.annual_volatility.toFixed(2)}%</div>
-          <p className="text-xs text-blue-600">Riesgo anualizado</p>
+      {/* 2. VOLATILIDAD (Naranja - Riesgo) */}
+      <Card className="border-l-4 border-l-orange-500 shadow-sm">
+        <CardContent className="p-6">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Volatilidad (Riesgo)</p>
+              <h3 className="text-2xl font-bold text-gray-900 mt-2">
+                {metrics.annual_volatility.toFixed(2)}%
+              </h3>
+              <p className="text-xs text-orange-600 mt-1 font-medium">
+                Desviación Anual
+              </p>
+            </div>
+            <div className="p-2 bg-orange-100 rounded-lg">
+              <Activity className="h-5 w-5 text-orange-600" />
+            </div>
+          </div>
         </CardContent>
       </Card>
 
-      <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Sharpe Ratio</CardTitle>
-          <Target className="h-4 w-4 text-purple-600" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-purple-700">{metrics.sharpe_ratio.toFixed(3)}</div>
-          <Badge variant={sharpeRating.color} className="mt-1">{sharpeRating.label}</Badge>
+      {/* 3. SHARPE RATIO (Azul - Calidad) */}
+      <Card className="border-l-4 border-l-blue-500 shadow-sm">
+        <CardContent className="p-6">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Sharpe Ratio</p>
+              <h3 className="text-2xl font-bold text-gray-900 mt-2">
+                {metrics.sharpe_ratio.toFixed(2)}
+              </h3>
+              <p className="text-xs text-blue-600 mt-1 font-medium">
+                Eficiencia Riesgo/Retorno
+              </p>
+            </div>
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <Crosshair className="h-5 w-5 text-blue-600" />
+            </div>
+          </div>
         </CardContent>
       </Card>
 
-      <Card className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950 dark:to-amber-900">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Valor del Portafolio</CardTitle>
-          <Percent className="h-4 w-4 text-amber-600" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-amber-700">{formatCurrency(portfolioValue)}</div>
-          <p className="text-xs text-amber-600">Capital inicial</p>
+      {/* 4. VALOR PORTAFOLIO (Gris - Capital) */}
+      <Card className="border-l-4 border-l-slate-500 shadow-sm">
+        <CardContent className="p-6">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Capital Total</p>
+              <h3 className="text-2xl font-bold text-gray-900 mt-2">
+                {formatCurrency(portfolioValue)}
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Monto Invertido
+              </p>
+            </div>
+            <div className="p-2 bg-slate-100 rounded-lg">
+              <Wallet className="h-5 w-5 text-slate-600" />
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

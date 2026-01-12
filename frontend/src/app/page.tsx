@@ -68,7 +68,7 @@ export default function Home() {
       setOptimizationData(optimization);
 
       setStep("risk");
-      const risk = await riskApi. analyzeRisk(tickers, optimization. weights, portfolioValue);
+      const risk = await riskApi. analyzeRisk(tickers, optimization. weights, portfolioValue, 5000, "5y");
       setRiskData(risk);
 
       setStep("complete");
