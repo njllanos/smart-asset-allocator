@@ -17,7 +17,7 @@ from pypfopt import (
 
 from ..config import get_settings
 from ..core.exceptions import OptimizationException
-from ..models. schemas import (
+from ..models.schemas import (
     OptimizationRequest,
     OptimizationResponse,
     PortfolioAllocation,
@@ -27,7 +27,7 @@ from ..models. schemas import (
     TickerSentimentSummary
 )
 from ..models.enums import TimeframePreset
-from .  market_data_service import MarketDataService
+from .market_data_service import MarketDataService
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -42,7 +42,7 @@ class OptimizationService:
     # PARÁMETROS DE AJUSTE DE SENTIMIENTO
     # ============================================
     # Escala:  sentiment_score [-1, 1] * SCALE = view de retorno
-    # 0.03 significa que sentimiento de +1. 0 genera view de +3%
+    # 0.03 significa que sentimiento de +1.0 genera view de +3%
     SENTIMENT_TO_RETURN_SCALE = 0.02  # Reducido de 0.05 a 0.03
     
     # Factor de confianza máxima para views de sentimiento
@@ -71,11 +71,11 @@ class OptimizationService:
             prices_df = await self._get_prices(request.tickers, request.timeframe)
             
             # Paso 2: Calcular retornos esperados y covarianza
-            mu = expected_returns. mean_historical_return(prices_df)
+            mu = expected_returns.mean_historical_return(prices_df)
             cov_matrix = risk_models.sample_cov(prices_df)
             
             # Log de retornos históricos para debug
-            logger.info(f"Historical returns: {dict(mu. round(4))}")
+            logger.info(f"Historical returns: {dict(mu.round(4))}")
             
             # Paso 3: Preparar views para Black-Litterman
             views, view_confidences = self._prepare_views(
@@ -86,7 +86,7 @@ class OptimizationService:
             
             # Paso 4: Aplicar Black-Litterman si hay views
             bl_params = None
-            posterior_mu = mu  # Default:  usar retornos históricos
+            posterior_mu = mu  # Default: usar retornos históricos
             
             if views:
                 result = self._apply_black_litterman(
@@ -147,7 +147,7 @@ class OptimizationService:
         """Obtiene DataFrame de precios históricos."""
         market_data = await self.market_data_service.get_market_data(tickers, timeframe)
         
-        days = self.market_data_service. TIMEFRAME_MAPPING[timeframe]
+        days = self.market_data_service.TIMEFRAME_MAPPING[timeframe]
         from datetime import timedelta
         end_date = datetime.now()
         start_date = end_date - timedelta(days=days)
@@ -165,9 +165,6 @@ class OptimizationService:
     ) -> Tuple[Dict[str, float], Dict[str, float]]:
         """
         Prepara views para Black-Litterman.
-        
-        IMPORTANTE: Las confianzas deben ser bajas (0.1-0.3) para que
-        el sentimiento sea un AJUSTE, no un REEMPLAZO de los retornos históricos.
         """
         views = {}
         confidences = {}
@@ -177,7 +174,7 @@ class OptimizationService:
             for view in request.views:
                 if view.ticker in tickers:
                     views[view.ticker] = view.view
-                    confidences[view. ticker] = view.confidence
+                    confidences[view.ticker] = view.confidence
             logger.info(f"Using {len(views)} manual views")
             return views, confidences
         
@@ -186,41 +183,24 @@ class OptimizationService:
             for ticker, summary in sentiment_results.items():
                 if ticker in tickers:
                     # Convertir sentiment score [-1, 1] a view de retorno
-                    # sentiment_score=0.5 * 0.03 = 0.015 (1.5% view)
                     view_return = summary.sentiment_score * self.SENTIMENT_TO_RETURN_SCALE
                     views[ticker] = view_return
                     
-                    # ============================================
-                    # CÁLCULO DE CONFIANZA (CRÍTICO)
-                    # ============================================
-                    # Factores: 
-                    # 1. Confianza del modelo (0-1)
-                    # 2. Cantidad de artículos (más = más confiable)
-                    # 3. Magnitud del sentimiento (extremos = menos confiable)
-                    
                     base_confidence = summary.confidence_avg
                     
-                    # Factor por cantidad de artículos (escala logarítmica)
-                    # 5 artículos = 0.5, 10 = 0.7, 20 = 0.85, 30+ = 1.0
+                    # Factor por cantidad de artículos
                     article_factor = min(np.log10(summary.articles_analyzed + 1) / np.log10(31), 1.0)
                     
-                    # Factor por extremidad (sentimientos muy extremos son menos confiables)
-                    # score=0 -> factor=1, score=±1 -> factor=0.7
+                    # Factor por extremidad
                     extremity_factor = 1.0 - 0.3 * abs(summary.sentiment_score)
                     
-                    # Confianza final: limitada por MAX_SENTIMENT_CONFIDENCE
+                    # Confianza final
                     raw_confidence = base_confidence * article_factor * extremity_factor
                     final_confidence = min(raw_confidence, self.MAX_SENTIMENT_CONFIDENCE)
                     
                     confidences[ticker] = final_confidence
-                    
-                    logger.debug(
-                        f"{ticker}: sentiment={summary.sentiment_score:.2f}, "
-                        f"view={view_return:.4f}, confidence={final_confidence:.3f}"
-                    )
             
             logger.info(f"Generated {len(views)} views from sentiment analysis")
-            logger.info(f"View confidences: {dict((k, round(v, 3)) for k, v in confidences.items())}")
         
         return views, confidences
     
@@ -229,35 +209,25 @@ class OptimizationService:
         cov_matrix: pd.DataFrame,
         views: Dict[str, float],
         view_confidences: Dict[str, float],
-        market_prior:  pd.Series
+        market_prior: pd.Series
     ) -> Tuple[Optional[pd.Series], Optional[BlackLittermanParams]]:
-        """
-        Aplica modelo Black-Litterman. 
-        
-        Usa los retornos históricos como prior en lugar de calcular
-        retornos implícitos del mercado (más estable para pocos activos).
-        """
+        """Aplica modelo Black-Litterman."""
         tickers = cov_matrix.columns.tolist()
-        
-        # Filtrar views válidas
         viewdict = {k: v for k, v in views.items() if k in tickers}
         
         if not viewdict:
             return None, None
         
         try:
-            # Crear Black-Litterman model
-            # Usamos los retornos históricos como pi (prior)
             bl = BlackLittermanModel(
                 cov_matrix=cov_matrix,
-                pi=market_prior,  # Retornos históricos como prior
+                pi=market_prior,
                 absolute_views=viewdict,
                 tau=self.tau,
                 omega="idzorek",
-                view_confidences=[view_confidences. get(t, 0.1) for t in viewdict. keys()]
+                view_confidences=[view_confidences.get(t, 0.1) for t in viewdict.keys()]
             )
             
-            # Obtener retornos posteriores
             posterior_returns = bl.bl_returns()
             
             bl_params = BlackLittermanParams(
@@ -276,11 +246,11 @@ class OptimizationService:
     def _optimize(
         self,
         mu: pd.Series,
-        cov_matrix:  pd.DataFrame,
+        cov_matrix: pd.DataFrame,
         objective: str,
         constraints,
-        risk_free_rate:  float,
-        target_return:  Optional[float],
+        risk_free_rate: float,
+        target_return: Optional[float],
         target_volatility: Optional[float]
     ) -> Tuple[Dict[str, float], PortfolioMetrics]:
         """
@@ -303,7 +273,9 @@ class OptimizationService:
         else:
             weights = ef.max_sharpe(risk_free_rate=risk_free_rate)
         
-        cleaned_weights = ef.clean_weights(cutoff=0.01)
+        # CORRECCION 1: Reducir el cutoff de limpieza de 0.01 (1%) a 0.0001 (0.01%)
+        # Esto permite que activos con 0.7% (0.007) aparezcan en la respuesta
+        cleaned_weights = ef.clean_weights(cutoff=0.0001)
         
         performance = ef.portfolio_performance(
             verbose=False, 
@@ -327,8 +299,9 @@ class OptimizationService:
         allocations = []
         
         for ticker, weight in weights.items():
-            if weight > 0.001: 
-                exp_ret = expected_returns. get(ticker, 0)
+            # El filtro aquí también debe ser coherente con clean_weights
+            if weight > 0.0001: 
+                exp_ret = expected_returns.get(ticker, 0)
                 allocations.append(PortfolioAllocation(
                     ticker=ticker,
                     weight=round(weight, 4),
@@ -344,7 +317,7 @@ class OptimizationService:
         mu: pd.Series,
         cov_matrix: pd.DataFrame,
         risk_free_rate: float,
-        n_points: int = 20
+        n_points: int = 30  # CORRECCION 2b: Aumentar puntos para suavidad (de 20 a 30)
     ) -> List[Dict[str, float]]:
         """Calcula puntos de la frontera eficiente."""
         frontier_points = []
@@ -353,7 +326,9 @@ class OptimizationService:
             min_ret = float(mu.min())
             max_ret = float(mu.max())
             
-            target_returns = np.linspace(min_ret, max_ret, n_points)
+            # CORRECCION 2a: Restar un epsilon pequeño a max_ret
+            # Esto evita errores de solver justo en el límite matemático superior
+            target_returns = np.linspace(min_ret, max_ret - 0.00001, n_points)
             
             for target in target_returns:
                 try:
@@ -367,6 +342,7 @@ class OptimizationService:
                         "sharpe": round(perf[2], 3)
                     })
                 except Exception: 
+                    # Si falla un punto específico, continuamos con el siguiente
                     continue
                     
         except Exception as e:
@@ -380,10 +356,10 @@ class OptimizationService:
     ) -> List[BlackLittermanView]: 
         """Convierte resultados de sentiment a views de Black-Litterman."""
         views = []
-        for ticker, summary in sentiment_results. items():
+        for ticker, summary in sentiment_results.items():
             view_return = summary.sentiment_score * self.SENTIMENT_TO_RETURN_SCALE
             
-            article_factor = min(np.log10(summary. articles_analyzed + 1) / np.log10(31), 1.0)
+            article_factor = min(np.log10(summary.articles_analyzed + 1) / np.log10(31), 1.0)
             extremity_factor = 1.0 - 0.3 * abs(summary.sentiment_score)
             confidence = min(
                 summary.confidence_avg * article_factor * extremity_factor,

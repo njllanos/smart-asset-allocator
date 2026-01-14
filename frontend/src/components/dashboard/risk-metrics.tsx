@@ -89,7 +89,7 @@ export function RiskMetrics({ metrics, portfolioValue }: RiskMetricsProps) {
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium flex items-center">
             Prob. Pérdida {'>'}10%
-            <HelpTooltip content="Probabilidad de caída extrema en un solo día. La 'Kurtosis' mide el riesgo de sorpresas: un valor alto (>3.0) indica 'Colas Gordas', lo que significa que el portafolio es propenso a movimientos violentos e inesperados (Cisnes Negros) con mucha más frecuencia que un mercado normal." />
+            <HelpTooltip content="Probabilidad de caída extrema en UN solo día. La 'Kurtosis' mide el riesgo de sorpresas: un valor alto (>3.0) indica 'Colas Gordas', lo que significa que el portafolio es propenso a movimientos violentos e inesperados (Cisnes Negros) con mucha más frecuencia que un mercado normal." />
           </CardTitle>
           <BarChart3 className="h-4 w-4 text-purple-500" />
         </CardHeader>
